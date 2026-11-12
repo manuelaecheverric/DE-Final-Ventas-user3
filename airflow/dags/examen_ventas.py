@@ -14,8 +14,18 @@ with DAG(
     default_args={"retries": 0},
     tags=["examen"],
 ) as dag:
+    # Control de actualidad: warn > 12 h (no bloquea), error > 24 h (falla y bloquea el build).
+    verificar_frescura = PythonOperator(
+        task_id="verificar_frescura",
+        python_callable=run_dbt,
+        op_args=[["source", "freshness"]],
+    )
+
     construir_resumen = PythonOperator(
         task_id="construir_resumen",
         python_callable=run_dbt,
         op_args=[["build"]],
     )
+
+    # trigger_rule por defecto (all_success): si freshness falla, el build queda upstream_failed.
+    verificar_frescura >> construir_resumen
